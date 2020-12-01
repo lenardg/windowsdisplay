@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ##############################################################
-# Halloween lights for window display
+# Christmas lights for window display
 # uses Blinkt! library
 #
 # by Lenard Gunda
@@ -17,6 +17,8 @@ hue = 0
 
 # the colors we use for blinking
 blinkColors = [(255,255,255),(255,255,255),(255,255,255),(255,64,0),(192,0,255)]
+
+xmasColors = [(255,255,255),(255,128,0),(0,255,0),(255,0,0)]
 
 # Set to True to see time values. Set to False (default) for normal operation
 debug = False
@@ -56,12 +58,63 @@ def colorfade(minSeconds, maxSeconds, shift = 0, multiplier = 1.0, fullRange = 3
         if time.time() - start > duration:
             break
  
+def saturationfade(minSeconds, maxSeconds, shift = 0, multiplier = 1.0, fullRange = 30):
+    start = time.time()
+    duration = randint(minSeconds, maxSeconds)
+    saturation = 1.0
+    satdir = -0.05
+    while True:
+        current = time.time() % fullRange
+        if current >= fullRange / 2:
+            current = fullRange - current
+        current = current * multiplier
+        hue = current + shift 
+
+        saturation = saturation + satdir
+        if saturation <= 0:
+            saturation = 0.0
+            satdir = 0.05
+        elif saturation >= 1.0:
+            saturation = 1.0
+            satdir = -0.05
+
+        for x in range(blinkt.NUM_PIXELS):
+            h = ((hue) % 360) / 360.0
+            r, g, b = [int(c*255) for c in colorsys.hsv_to_rgb(h, saturation, 1.0)]
+            blinkt.set_pixel(x, r, g, b)
+
+        blinkt.show()
+        time.sleep(0.5)
+
+        if time.time() - start > duration:
+            break
+ 
+
+def whiteOrange():
+    saturationfade(20, 45, 20)
+    #colorfade(20, 45)
+
 def blueLilac():
     colorfade(20, 45, 240, 3.0)
 
 def orangeRed():
     colorfade(20, 45)
-       
+
+def xmasblink():
+    start = time.time()
+    duration = randint(20,45)
+
+    while True:
+        r, g, b = choice(xmasColors)
+        blinkt.set_all(r, g, b)
+        blinkt.show()
+        time.sleep(1)
+        if time.time() - start > duration:
+            break
+    blinkt.clear()
+    blinkt.show()
+  
+      
 def blink():
     start = time.time()
     duration = randint(3,8)
@@ -80,10 +133,10 @@ def blink():
 
 def lightshow(canBlink):
     if canBlink:
-        blink()
-    blueLilac()
+        xmasblink()
+    whiteOrange()
     if canBlink:
-        blink()
+        xmasblink()
     orangeRed()
 
 ########################
