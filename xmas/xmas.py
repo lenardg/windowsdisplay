@@ -12,6 +12,18 @@ import time
 from random import randint, choice
 import blinkt
 
+########################
+# CONSTANTS
+########################
+STATE_IDLE = 0
+STATE_MORNING_BLINK = 7
+STATE_MORNING_NOBLINK = 6
+STATE_EVENING_BLINK = 18
+STATE_EVENING_NOBLINK = 20
+
+#########################
+# Some more constants
+#########################
 spacing = 360.0 / 16.0
 hue = 0
 
@@ -19,9 +31,25 @@ hue = 0
 blinkColors = [(255,255,255),(255,255,255),(255,255,255),(255,64,0),(192,0,255)]
 
 xmasColors = [(255,255,255),(255,128,0),(0,255,0),(255,0,0)]
+xmasColors2 = [(255,255,255),(255,0,255),(128,0,255),(0,0,255)]
+xmasColors3 = [(255,200,0),(255,0,255),(0,255,0),(255,0,0)]
+
+# The program
+program = [
+    # CurrentState, WeekDayOnly, LocalHour, LocalMinute, MaxLocalHour, NewState
+    [ STATE_IDLE, False, 6, 0, 8, STATE_MORNING_NOBLINK ],
+    [ STATE_MORNING_NOBLINK, True, 6, 45, 9, STATE_MORNING_BLINK ],
+    [ STATE_MORNING_NOBLINK, False, 8, 45, 9, STATE_IDLE ],
+    [ STATE_MORNING_BLINK, False, 8, 45, 9, STATE_IDLE ],
+    
+    # Afternoon
+    [ STATE_IDLE, False, 15, 20, 23, STATE_EVENING_BLINK ],
+    [ STATE_EVENING_BLINK, False, 19, 30, -1, STATE_EVENING_NOBLINK ],
+    [ STATE_EVENING_NOBLINK, False, 23, 45, -1, STATE_IDLE ]
+]
 
 # Set to True to see time values. Set to False (default) for normal operation
-debug = False
+debug = True 
 
 # setup
 if not debug:
@@ -111,26 +139,8 @@ def xmasblink():
         time.sleep(1)
         if time.time() - start > duration:
             break
-    blinkt.clear()
-    blinkt.show()
+    clear()
   
-      
-def blink():
-    start = time.time()
-    duration = randint(3,8)
-
-    r, g, b = choice(blinkColors)
-
-    while True:
-        blinkt.set_all(r, g, b)
-        blinkt.show()
-        time.sleep(0.01)
-        blinkt.clear()
-        blinkt.show()
-        time.sleep(0.01)
-        if time.time() - start > duration:
-            break
-
 def lightshow(canBlink):
     if canBlink:
         xmasblink()
@@ -139,20 +149,11 @@ def lightshow(canBlink):
         xmasblink()
     orangeRed()
 
-########################
-# CONSTANTS
-########################
-STATE_IDLE = 0
-STATE_MORNING_BLINK = 7
-STATE_MORNING_NOBLINK = 6
-STATE_EVENING_BLINK = 18
-STATE_EVENING_NOBLINK = 20
-
-########################
+#######################
 # MAIN
 ########################
 try:
-    print("HALLOWEEN lights")
+    print("CHRISTMAS lights")
     state = STATE_IDLE
                 # states: 
                 #   0 not running
@@ -161,7 +162,7 @@ try:
                 #  18 night run with blink
                 #  20 night run without blink
 
-    debugtime = 1572112625 # 1571882400 
+    debugtime = 1607243275 - 3600 * 5 # 1572112625 # 1571882400 
     endtime = debugtime + 3600 * 32
 
     # begin state machine
@@ -177,58 +178,33 @@ try:
         utcnow = time.gmtime(now)
         helnow = time.localtime(now)
 
-        # state transitions
-        if state == STATE_IDLE:
-            if helnow.tm_hour >= 6 and utcnow.tm_hour < 5:
-                print("It's 6:00 local, we turn on")
-                state = STATE_MORNING_NOBLINK
-                continue
-            elif (helnow.tm_hour > 16 or (helnow.tm_hour == 16 and helnow.tm_min > 30)) and helnow.tm_hour < 23:
-                print("It's 16:30 local time, we turn on")
-                state = STATE_EVENING_BLINK
-                continue
-            if not debug:
-                time.sleep(60)
-            else:
-                print("{0}:{1} idle".format(helnow.tm_hour, helnow.tm_min))
-            continue
-        elif state == STATE_MORNING_NOBLINK:
-            if helnow.tm_wday > 4:
-                if utcnow.tm_hour > 5 or (utcnow.tm_hour == 5 and utcnow.tm_min > 24):
-                    print("On weekdays we do not blink in the morning, but stop after 5:24 UTC, turn off lights")
-                    state = STATE_IDLE
-                    clear()
+        # process the program
+        for p in program:
+            if p[0] == state: # if this rule applies in this state
+                if p[1] and helnow.tm_wday > 4: # if this rule applies on weekdays only, skip on weekends
                     continue
-            elif helnow.tm_hour > 6 or (helnow.tm_hour == 6 and helnow.tm_min > 45):
-                print("After 6:45 local, blinking can start")
-                state = STATE_MORNING_BLINK
-                continue
-        elif state == STATE_MORNING_BLINK:
-            if utcnow.tm_hour > 5 or (utcnow.tm_hour == 5 and utcnow.tm_min > 45):
-                print("It's after 5:45 UTC, turn off lights")
-                state = STATE_IDLE
-                clear()
-                continue
-        elif state == STATE_EVENING_BLINK:
-            if helnow.tm_hour > 19 or (helnow.tm_hour == 19 and helnow.tm_min > 30):
-                print("After 19:30 local, blinking will stop now")
-                state = STATE_EVENING_NOBLINK
-        elif state == STATE_EVENING_NOBLINK:
-            if helnow.tm_hour > 23 or (helnow.tm_hour == 23 and helnow.tm_min > 45):
-                print("It's 23:45 local, turn off lights")
-                state = STATE_IDLE
-                clear()
-                continue
+                if p[2] < helnow.tm_hour or (p[2] == helnow.tm_hour and p[3] < helnow.tm_min):
+                    if p[4] >= 0 and p[4] <= helnow.tm_hour:
+                        continue
+                    state = p[5]
+                    print("Current time is: {0}:{1}, new state {2}".format(helnow.tm_hour, helnow.tm_min, state))
 
+        # process the state
         if state == STATE_MORNING_BLINK or state == STATE_EVENING_BLINK:
             canBlink = True
         else:
             canBlink = False
 
-        if debug:
-            print("{0}:{1} Lightshow, canBlink={2}".format(helnow.tm_hour, helnow.tm_min, canBlink))
+        if state == STATE_IDLE:
+            if debug:
+                print("{0}-{1}-{2} {3}:{4} Idle".format(helnow.tm_year, helnow.tm_mon, helnow.tm_mday, helnow.tm_hour, helnow.tm_min))
+            else:
+                time.sleep(60)
         else:
-            lightshow(canBlink)
+            if debug:
+                print("{0}-{1}-{2} {3}:{4} Lightshow, state={5}, canBlink={6}".format(helnow.tm_year, helnow.tm_mon, helnow.tm_mday, helnow.tm_hour, helnow.tm_min, state, canBlink))
+            else:
+                lightshow(canBlink)
 
 except KeyboardInterrupt:
     print("Keyboard break received")
