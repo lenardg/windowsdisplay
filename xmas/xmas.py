@@ -30,9 +30,11 @@ hue = 0
 # the colors we use for blinking
 blinkColors = [(255,255,255),(255,255,255),(255,255,255),(255,64,0),(192,0,255)]
 
-xmasColors = [(255,255,255),(255,128,0),(0,255,0),(255,0,0)]
+xmasColors1 = [(255,255,255),(255,128,0),(0,255,0),(255,0,0)]
 xmasColors2 = [(255,255,255),(255,0,255),(128,0,255),(0,0,255)]
 xmasColors3 = [(255,200,0),(255,0,255),(0,255,0),(255,0,0)]
+
+xmas = [xmasColors1, xmasColors2, xmasColors3]
 
 # The program
 program = [
@@ -49,7 +51,7 @@ program = [
 ]
 
 # Set to True to see time values. Set to False (default) for normal operation
-debug = True 
+debug = False 
 
 # setup
 if not debug:
@@ -99,8 +101,8 @@ def saturationfade(minSeconds, maxSeconds, shift = 0, multiplier = 1.0, fullRang
         hue = current + shift 
 
         saturation = saturation + satdir
-        if saturation <= 0:
-            saturation = 0.0
+        if saturation <= 0.2:
+            saturation = 0.2
             satdir = 0.05
         elif saturation >= 1.0:
             saturation = 1.0
@@ -132,8 +134,10 @@ def xmasblink():
     start = time.time()
     duration = randint(20,45)
 
+    thisBlink = choice(xmas)
+
     while True:
-        r, g, b = choice(xmasColors)
+        r, g, b = choice(thisBlink)
         blinkt.set_all(r, g, b)
         blinkt.show()
         time.sleep(1)
